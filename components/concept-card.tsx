@@ -1,7 +1,7 @@
 'use client'
 
 import { Card, CardContent } from '@/components/ui/card'
-import { CheckCircle2, MapPin, Star, Swords, Lock } from 'lucide-react'
+import { CheckCircle2, MapPin, Star, Swords } from 'lucide-react'
 import type { Concept } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -27,7 +27,8 @@ const difficultyConfig = {
 }
 
 export function ConceptCard({ concept, onClick, index }: ConceptCardProps) {
-  const config = difficultyConfig[concept.difficulty]
+  // Fix: Added a fallback to 'medium' to prevent the "Cannot read properties of undefined (reading 'stars')" crash
+  const config = difficultyConfig[concept.difficulty as keyof typeof difficultyConfig] || difficultyConfig.medium
   const isCompleted = concept.completed
 
   return (

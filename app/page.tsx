@@ -1,7 +1,8 @@
 import { InputForm } from '@/components/input-form'
 import { RecentAdventures } from '@/components/recent-adventures'
 import { XpBar } from '@/components/xp-bar'
-import { BookOpen, Swords, Crown, Shield, Sparkles } from 'lucide-react'
+// Replaced Shield/PenTool with Scroll
+import { BookOpen, Swords, Crown, Scroll, Sparkles } from 'lucide-react'
 
 export default function Home() {
   return (
@@ -16,12 +17,13 @@ export default function Home() {
         <div className="relative max-w-5xl mx-auto px-4 py-12 sm:py-16">
           {/* Header */}
           <div className="text-center mb-12">
+            {/* The Icon is now a Scroll */}
             <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-[var(--gold)]/10 border-2 border-[var(--gold-dim)] mb-6 gold-glow">
-              <Shield className="h-8 w-8 text-[var(--gold)]" />
+              <Scroll className="h-8 w-8 text-[var(--gold)]" />
             </div>
             <h1 className="font-serif text-5xl sm:text-6xl lg:text-7xl font-bold mb-4 text-balance">
-              <span className="text-[var(--gold)] drop-shadow-[0_0_30px_rgba(255,215,0,0.3)]">Study</span>{' '}
-              <span className="text-[var(--parchment)]">Buddy</span>
+              <span className="text-[var(--gold)] drop-shadow-[0_0_30px_rgba(255,215,0,0.3)]">Quest</span>{' '}
+              <span className="text-[var(--parchment)]">Scribe</span>
             </h1>
             <p className="text-lg sm:text-xl text-[var(--parchment-dark)] max-w-2xl mx-auto text-pretty leading-relaxed">
               Transform any lecture into an epic RPG adventure. Face challenges, prove your knowledge, and ascend to mastery.

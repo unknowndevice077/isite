@@ -11,9 +11,22 @@ interface WorldMapProps {
 }
 
 export function WorldMap({ title, concepts, onSelectConcept }: WorldMapProps) {
-  const completedCount = concepts.filter(c => c.completed).length
-  const totalXp = concepts.reduce((sum, c) => sum + (c.completed ? c.xpReward : 0), 0)
-  const potentialXp = concepts.reduce((sum, c) => sum + c.xpReward, 0)
+  // Calculate locked state for progressive unlocks
+  const conceptsWithLocks = concepts.map((concept, index) => ({
+    ...concept,
+    locked: index > 0 && !concepts[index - 1].completed
+  }))
+
+  const completedCount = conceptsWithLocks.filter(c => c.completed).length
+  const totalXp = conceptsWithLocks.reduce((sum, c) => sum + (c.completed ? c.xpReward : 0), 0)
+  const potentialXp = conceptsWithLocks.reduce((sum, c) => sum + c.xpReward, 0)
+
+  const handleSelectConcept = (concept: Concept) => {
+    // Only allow selecting unlocked concepts
+    if (!concept.locked) {
+      onSelectConcept(concept)
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -21,7 +34,7 @@ export function WorldMap({ title, concepts, onSelectConcept }: WorldMapProps) {
       {title && (
         <div className="mb-8 border-b border-[var(--gold-dim)]/30 pb-4">
           <h2 className="text-4xl font-bold font-serif text-[var(--gold)] flex items-center gap-4">
-            <span className="text-5xl">🏰</span> {title}
+            <span className="text-5xl"></span> {title}
           </h2>
         </div>
       )}
@@ -35,7 +48,7 @@ export function WorldMap({ title, concepts, onSelectConcept }: WorldMapProps) {
             <div>
               <p className="text-xs text-[var(--gold-dim)] uppercase tracking-wider">Challenges</p>
               <p className="text-xl font-serif font-bold text-[var(--gold)]">
-                {completedCount} / {concepts.length}
+                {completedCount} / {conceptsWithLocks.length}
               </p>
             </div>
           </div>
@@ -52,7 +65,7 @@ export function WorldMap({ title, concepts, onSelectConcept }: WorldMapProps) {
             </div>
           </div>
         </div>
-        {completedCount === concepts.length && concepts.length > 0 && (
+        {completedCount === conceptsWithLocks.length && conceptsWithLocks.length > 0 && (
           <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[var(--success)]/10 border border-[var(--success)]/40">
             <Trophy className="h-5 w-5 text-[var(--success)]" />
             <span className="text-sm font-semibold text-[var(--success)]">
@@ -64,12 +77,12 @@ export function WorldMap({ title, concepts, onSelectConcept }: WorldMapProps) {
 
       {/* Concept grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-        {concepts.map((concept, index) => (
+        {conceptsWithLocks.map((concept, index) => (
           <ConceptCard
             key={concept.id}
             concept={concept}
             index={index}
-            onClick={() => onSelectConcept(concept)}
+            onClick={() => handleSelectConcept(concept)}
           />
         ))}
       </div>

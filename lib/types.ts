@@ -6,6 +6,7 @@ export interface Concept {
   xpReward: number
   completed: boolean
   location: string
+  locked?: boolean
 }
 
 export interface WorldMap {

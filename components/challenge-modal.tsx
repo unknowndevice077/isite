@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Spinner } from '@/components/ui/spinner'
 import { 
   X, Send, Star, Scroll, User, Swords, Heart, 
-  Sparkles, FlaskConical, ShieldCheck, Shield 
+  Sparkles, FlaskConical, ShieldCheck, Shield, MessageSquare
 } from 'lucide-react'
 import type { Concept, WorldMap, EvaluationResult } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -30,18 +30,26 @@ export function ChallengeModal({ concept, worldMap, onClose, onComplete }: any) 
   const [evaluationResult, setEvaluationResult] = useState<EvaluationResult | null>(null)
   const [hintsUsed, setHintsUsed] = useState(0)
   const [health, setHealth] = useState(100)
-  const [accumulatedXp, setAccumulatedXp] = useState(0) // MOVED INSIDE
+  const [accumulatedXp, setAccumulatedXp] = useState(0) 
   const [showXpFloat, setShowXpFloat] = useState(false)
   const [floatXp, setFloatXp] = useState(0)
-  const [timeRemaining, setTimeRemaining] = useState(180) 
   
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
-  const hasStarted = useRef(false)
+  
+  // FIX: Track processed message IDs to prevent double-counting XP
+  const lastProcessedId = useRef<string | null>(null)
 
   const [shieldsUsed, setShieldsUsed] = useState(0)
   const maxHints = 3
   const maxShields = 1
+
+  // Starter Options
+  const starters = [
+    `I am ready to face the riddle of ${concept?.name || 'this concept'}.`,
+    `What sacred knowledge is guarded here?`,
+    `Grant me the first trial of wisdom, Master.`
+  ]
 
   const userId = useMemo(() => {
     if (typeof window === 'undefined') return 'rj-guest'
@@ -66,46 +74,26 @@ export function ChallengeModal({ concept, worldMap, onClose, onComplete }: any) 
   const isStreaming = status === 'streaming'
   const isReady = status === 'ready'
 
-  // Timer logic
-  useEffect(() => {
-    if (evaluationResult || health <= 0) return
-    const timer = setInterval(() => {
-      setTimeRemaining(prev => prev > 0 ? prev - 1 : 0)
-    }, 1000)
-    return () => clearInterval(timer)
-  }, [evaluationResult, health])
-
-  // Auto-start
-  useEffect(() => {
-    if (!hasStarted.current && messages.length === 0 && isReady) {
-      hasStarted.current = true;
-      append({ 
-        role: 'user', 
-        content: `I approach ${concept?.location || 'this place'} and am ready to face the riddle of ${concept?.name || 'this concept'}.` 
-      })
-    }
-  }, [messages.length, isReady, append, concept])
-
-  // --- MESSAGE & TAG PROCESSING ---
+  // --- MESSAGE & TAG PROCESSING (FIXED) ---
   useEffect(() => {
     const lastMsg = messages[messages.length - 1];
-    if (lastMsg && lastMsg.role === 'assistant' && !isStreaming) {
+    
+    // Only process if message is from assistant, streaming is done, and it's a new message ID
+    if (lastMsg && lastMsg.role === 'assistant' && !isStreaming && lastMsg.id !== lastProcessedId.current) {
       const text = getMessageText(lastMsg.parts);
+      lastProcessedId.current = lastMsg.id;
       
       // 1. Process XP Tags
       const xpMatch = text.match(/\[XP_AWARDED:(\d+)\]/);
       if (xpMatch) {
         const gainedXp = parseInt(xpMatch[1], 10);
         
-        // Update local cumulative total
         setAccumulatedXp(prev => {
           const newTotal = prev + gainedXp;
-          
-          // Only trigger completion UI if 100 XP is reached
           if (newTotal >= 100 && !evaluationResult) {
             setEvaluationResult({
               passed: true,
-              feedback: "You have proven your mastery over this concept and earned your place among the legends!",
+              feedback: "You have proven your mastery over this concept!",
               correctPoints: ['100 XP Milestone Reached'],
               missedPoints: [],
               xpAwarded: newTotal,
@@ -114,7 +102,6 @@ export function ChallengeModal({ concept, worldMap, onClose, onComplete }: any) 
           return newTotal;
         });
 
-        // Trigger float animation
         setFloatXp(gainedXp);
         setShowXpFloat(true);
         setTimeout(() => setShowXpFloat(false), 2000);
@@ -127,15 +114,16 @@ export function ChallengeModal({ concept, worldMap, onClose, onComplete }: any) 
         setHealth(prev => Math.max(0, prev - penalty));
       }
     }
-  }, [messages, isStreaming, evaluationResult]);
+  }, [messages, isStreaming]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages])
+  }, [messages, status])
 
-  const handleSend = () => {
-    if (!input.trim() || isStreaming || isEvaluating || evaluationResult) return
-    append({ role: 'user', content: input.trim() })
+  const handleSend = (textOverride?: string) => {
+    const content = textOverride || input.trim()
+    if (!content || isStreaming || isEvaluating || evaluationResult) return
+    append({ role: 'user', content })
     setInput('')
   }
 
@@ -143,7 +131,7 @@ export function ChallengeModal({ concept, worldMap, onClose, onComplete }: any) 
     if (isStreaming || isEvaluating || hintsUsed >= maxHints || evaluationResult) return
     setHintsUsed(prev => prev + 1)
     setHealth(prev => Math.max(0, prev - 10))
-    append({ role: 'user', content: 'I need a hint from the spirits of this place.' })
+    handleSend('I need a hint from the spirits of this place.')
   }
 
   const handleShield = () => {
@@ -163,12 +151,6 @@ export function ChallengeModal({ concept, worldMap, onClose, onComplete }: any) 
     } 
   }
 
-  const formatTime = (seconds: number) => { 
-    const mins = Math.floor(seconds / 60); 
-    const secs = seconds % 60; 
-    return `${mins}:${secs.toString().padStart(2, '0')}` 
-  }
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
       {showXpFloat && (
@@ -185,7 +167,7 @@ export function ChallengeModal({ concept, worldMap, onClose, onComplete }: any) 
           <div className="h-2 bg-[var(--muted)] relative overflow-hidden">
              <div 
                className="h-full bg-[var(--gold)] transition-all duration-1000 ease-out" 
-               style={{ width: `${Math.min(100, (accumulatedXp / 100) * 100)}%` }} 
+               style={{ width: `${Math.min(100, accumulatedXp)}%` }} 
              />
           </div>
 
@@ -199,7 +181,6 @@ export function ChallengeModal({ concept, worldMap, onClose, onComplete }: any) 
                 <h2 className="font-serif text-xl text-[var(--gold)] font-semibold">{concept?.location}</h2>
                 <div className="flex items-center gap-3 mt-1">
                   <span className="text-xs text-[var(--parchment-dark)] font-mono">Progress: {accumulatedXp}/100 XP</span>
-                  <span className="text-xs text-[var(--gold-dim)]">{formatTime(timeRemaining)}</span>
                 </div>
               </div>
             </div>
@@ -219,9 +200,29 @@ export function ChallengeModal({ concept, worldMap, onClose, onComplete }: any) 
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-6 min-h-[250px]">
-            {messages
-              .filter(m => getMessageText(m.parts) !== `I approach ${concept?.location} and am ready to face the riddle of ${concept?.name}.`)
-              .map((message) => {
+            {/* STARTER BUBBLES */}
+            {messages.length === 0 && (
+              <div className="h-full flex flex-col items-center justify-center space-y-4 py-10">
+                <div className="h-12 w-12 rounded-full bg-[var(--gold)]/10 flex items-center justify-center mb-2">
+                  <MessageSquare className="h-6 w-6 text-[var(--gold)]" />
+                </div>
+                <p className="text-[var(--gold-dim)] font-serif italic text-sm mb-4 uppercase tracking-widest">Approach the Master...</p>
+                <div className="grid grid-cols-1 gap-3 w-full max-w-md">
+                  {starters.map((starter, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => handleSend(starter)}
+                      className="text-left px-5 py-4 rounded-2xl bg-[var(--parchment-bg)] border border-[var(--gold-dim)]/30 text-[var(--parchment)] text-sm hover:border-[var(--gold)] hover:bg-[var(--gold)]/5 transition-all duration-300 shadow-md animate-in fade-in slide-in-from-bottom-2"
+                      style={{ animationDelay: `${idx * 150}ms` }}
+                    >
+                      {starter}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {messages.map((message) => {
                 const text = getMessageText(message.parts).replace(/\[XP_AWARDED:\d+\]/g, '').replace(/\[HP_LOSS:\d+\]/g, '')
                 if (!text) return null
                 const isUser = message.role === 'user'
@@ -242,6 +243,27 @@ export function ChallengeModal({ concept, worldMap, onClose, onComplete }: any) 
                   </div>
                 )
               })}
+
+            {/* TYPING INDICATOR (Bouncing Scroll and Dots) */}
+            {status === 'submitting' && (
+              <div className="flex flex-col items-start animate-in fade-in duration-300">
+                <span className="text-[10px] uppercase tracking-widest text-[var(--gold-dim)] mb-1 px-1">
+                  Dungeon Master
+                </span>
+                <div className="flex gap-3 max-w-[85%] flex-row">
+                  <div className="flex items-center justify-center h-9 w-9 rounded-lg shrink-0 mt-1 bg-[var(--gold)]/10 border border-[var(--gold-dim)]/50">
+                    <Scroll className="h-4 w-4 text-[var(--gold)] animate-bounce" />
+                  </div>
+                  <div className="rounded-2xl px-5 py-3 shadow-md bg-[var(--parchment-bg)] border border-[var(--gold-dim)]/30 text-[var(--parchment)] rounded-tl-none flex items-center min-h-[44px]">
+                    <div className="flex gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[var(--gold)]/60 animate-bounce [animation-delay:-0.3s]" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-[var(--gold)]/60 animate-bounce [animation-delay:-0.15s]" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-[var(--gold)]/60 animate-bounce" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
             <div ref={messagesEndRef} />
           </div>
 
@@ -257,14 +279,14 @@ export function ChallengeModal({ concept, worldMap, onClose, onComplete }: any) 
                   value={input} 
                   onChange={(e) => setInput(e.target.value)} 
                   onKeyDown={handleKeyDown} 
-                  placeholder="Answer the Master's query..." 
+                  placeholder={messages.length === 0 ? "Approach to begin..." : "Answer the Master's query..."} 
                   className="min-h-[80px] resize-none bg-[var(--input)] border-[var(--gold-dim)]/30 text-[var(--parchment)]" 
-                  disabled={isStreaming || health <= 0} 
+                  disabled={isStreaming || health <= 0 || messages.length === 0} 
                 />
                 <Button 
                   size="icon" 
-                  onClick={handleSend} 
-                  disabled={!input.trim() || isStreaming || health <= 0} 
+                  onClick={() => handleSend()} 
+                  disabled={!input.trim() || isStreaming || health <= 0 || messages.length === 0} 
                   className="h-auto min-w-[50px] bg-[var(--gold)] text-black gold-glow"
                 >
                   <Send className="h-5 w-5" />
@@ -272,7 +294,7 @@ export function ChallengeModal({ concept, worldMap, onClose, onComplete }: any) 
               </div>
             )}
             {health <= 0 && !evaluationResult && (
-               <p className="text-center text-[var(--health)] mt-2 font-serif italic">Your strength has faded. The trial is lost.</p>
+                <p className="text-center text-[var(--health)] mt-2 font-serif italic">Your strength has faded. The trial is lost.</p>
             )}
           </div>
         </div>
@@ -292,8 +314,8 @@ export function ChallengeModal({ concept, worldMap, onClose, onComplete }: any) 
              <div className="mb-4">
                <button 
                  onClick={handleHint} 
-                 disabled={hintsUsed >= maxHints || isStreaming || !!evaluationResult} 
-                 className={cn("w-full p-3 rounded-lg border-2 transition-all", hintsUsed < maxHints ? "border-[var(--gold-dim)] hover:border-[var(--gold)]" : "opacity-50 cursor-not-allowed")}
+                 disabled={hintsUsed >= maxHints || isStreaming || !!evaluationResult || messages.length === 0} 
+                 className={cn("w-full p-3 rounded-lg border-2 transition-all", hintsUsed < maxHints && messages.length > 0 ? "border-[var(--gold-dim)] hover:border-[var(--gold)]" : "opacity-50 cursor-not-allowed")}
                >
                  <FlaskConical className={cn("h-8 w-8 mx-auto mb-2", hintsUsed < maxHints ? "text-[var(--gold)]" : "text-[var(--muted-foreground)]")} />
                  <p className="text-xs text-[var(--parchment-dark)]">Hint Potion</p>
@@ -311,7 +333,7 @@ export function ChallengeModal({ concept, worldMap, onClose, onComplete }: any) 
                  <p className="text-xs text-[var(--gold-dim)]">{maxShields - shieldsUsed}/{maxShields}</p>
                </button>
              </div>
-           </div>
+          </div>
         </div>
       </div>
     </div>  

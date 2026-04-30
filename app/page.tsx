@@ -1,88 +1,60 @@
 import { InputForm } from '@/components/input-form'
 import { RecentAdventures } from '@/components/recent-adventures'
 import { XpBar } from '@/components/xp-bar'
-// Replaced Shield/PenTool with Scroll
 import { BookOpen, Swords, Crown, Scroll, Sparkles } from 'lucide-react'
 
 export default function Home() {
   return (
-    <main className="min-h-screen">
-      {/* Hero Section */}
+    <main className="min-h-screen bg-[var(--background)]">
       <div className="relative overflow-hidden">
-        {/* Background decoration - subtle gold radial glow */}
         <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-[var(--gold)]/5 rounded-full blur-3xl" />
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] bg-[var(--gold)]/5 rounded-full blur-[120px]" />
         </div>
         
-        <div className="relative max-w-5xl mx-auto px-4 py-12 sm:py-16">
+        <div className="relative max-w-6xl mx-auto px-6 py-16">
           {/* Header */}
-          <div className="text-center mb-12">
-            {/* The Icon is now a Scroll */}
-            <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-[var(--gold)]/10 border-2 border-[var(--gold-dim)] mb-6 gold-glow">
-              <Scroll className="h-8 w-8 text-[var(--gold)]" />
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center justify-center h-20 w-20 rounded-full bg-[var(--gold)]/10 border-2 border-[var(--gold-dim)] mb-8 shadow-[0_0_40px_rgba(255,215,0,0.2)]">
+              <Scroll className="h-10 w-10 text-[var(--gold)]" />
             </div>
-            <h1 className="font-serif text-5xl sm:text-6xl lg:text-7xl font-bold mb-4 text-balance">
-              <span className="text-[var(--gold)] drop-shadow-[0_0_30px_rgba(255,215,0,0.3)]">Quest</span>{' '}
-              <span className="text-[var(--parchment)]">Scribe</span>
+            <h1 className="font-serif text-6xl sm:text-7xl font-black mb-6 tracking-tight">
+              <span className="text-[var(--gold)] drop-shadow-[0_4px_12px_rgba(255,215,0,0.3)] uppercase">Quest</span>{' '}
+              <span className="text-[var(--parchment)] uppercase">Scribe</span>
             </h1>
-            <p className="text-lg sm:text-xl text-[var(--parchment-dark)] max-w-2xl mx-auto text-pretty leading-relaxed">
-              Transform any lecture into an epic RPG adventure. Face challenges, prove your knowledge, and ascend to mastery.
+            <p className="text-xl text-[var(--parchment-dark)] max-w-2xl mx-auto leading-relaxed font-serif italic">
+              "Transform thy sacred scrolls of knowledge into a legendary gauntlet of trials."
             </p>
           </div>
 
-          {/* XP Bar */}
-          <div className="mb-10 max-w-2xl mx-auto">
+          {/* Player Progress Dashboard */}
+          <div className="mb-12">
             <XpBar />
           </div>
 
-          {/* How it works */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-12">
-            <div className="flex flex-col items-center text-center p-5 rounded-lg stone-texture">
-              <div className="h-12 w-12 rounded-full bg-[var(--gold)]/10 border border-[var(--gold-dim)] flex items-center justify-center mb-4">
-                <BookOpen className="h-6 w-6 text-[var(--gold)]" />
+          {/* How it works - Placed at the top */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-12">
+            {[
+              { icon: BookOpen, title: "1. Inscribe", desc: "Paste thy sacred text" },
+              { icon: Swords, title: "2. Challenge", desc: "Face the Master's trials" },
+              { icon: Crown, title: "3. Ascend", desc: "Claim thy eternal XP" }
+            ].map((step, i) => (
+              <div key={i} className="p-6 rounded-xl parchment-texture border-2 border-[var(--gold-dim)]/20 text-center shadow-lg">
+                <step.icon className="h-8 w-8 text-[var(--gold)] mx-auto mb-3" />
+                <h3 className="font-serif font-black text-[var(--gold)] uppercase text-xs tracking-widest">{step.title}</h3>
+                <p className="text-[11px] text-[var(--parchment-dark)] font-black uppercase mt-1 opacity-70">{step.desc}</p>
               </div>
-              <h3 className="font-serif font-semibold text-[var(--gold)] mb-1">1. Inscribe Knowledge</h3>
-              <p className="text-sm text-[var(--parchment-dark)]">
-                Paste any transcript or sacred text
-              </p>
-            </div>
-            <div className="flex flex-col items-center text-center p-5 rounded-lg stone-texture">
-              <div className="h-12 w-12 rounded-full bg-[var(--gold)]/10 border border-[var(--gold-dim)] flex items-center justify-center mb-4">
-                <Swords className="h-6 w-6 text-[var(--gold)]" />
-              </div>
-              <h3 className="font-serif font-semibold text-[var(--gold)] mb-1">2. Face the Trials</h3>
-              <p className="text-sm text-[var(--parchment-dark)]">
-                The Dungeon Master tests your wisdom
-              </p>
-            </div>
-            <div className="flex flex-col items-center text-center p-5 rounded-lg stone-texture">
-              <div className="h-12 w-12 rounded-full bg-[var(--gold)]/10 border border-[var(--gold-dim)] flex items-center justify-center mb-4">
-                <Crown className="h-6 w-6 text-[var(--gold)]" />
-              </div>
-              <h3 className="font-serif font-semibold text-[var(--gold)] mb-1">3. Ascend in Power</h3>
-              <p className="text-sm text-[var(--parchment-dark)]">
-                Earn XP and become a Grand Archmage
-              </p>
-            </div>
+            ))}
           </div>
 
-          {/* Main content */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2">
+          {/* Main Questing Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
+            <div className="lg:col-span-3">
               <InputForm />
             </div>
-            <div className="lg:col-span-1">
-              <RecentAdventures />
-            </div>
-          </div>
 
-          {/* Footer tagline */}
-          <div className="mt-12 text-center">
-            <p className="text-sm text-[var(--muted-foreground)] flex items-center justify-center gap-2">
-              <Sparkles className="h-4 w-4 text-[var(--gold-dim)]" />
-              Learning is an adventure
-              <Sparkles className="h-4 w-4 text-[var(--gold-dim)]" />
-            </p>
+            <aside className="lg:col-span-1 h-full">
+              <RecentAdventures />
+            </aside>
           </div>
         </div>
       </div>

@@ -1,18 +1,18 @@
 'use client'
 
 import { useEffect, useState, useCallback, Suspense } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { WorldMap } from '@/components/world-map'
-import { XpBar } from '@/components/xp-bar'
 import { ChallengeModal } from '@/components/challenge-modal'
-import { ArrowLeft, Map, Scroll, Sparkles, CheckCircle2 } from 'lucide-react'
+import { Scroll, CheckCircle2 } from 'lucide-react'
 import { getWorldMapById, loadProgress, saveWorldMap, addXpAndUpdateProgress } from '@/lib/storage'
 import type { WorldMap as WorldMapType, Concept, UserProgress } from '@/lib/types'
 
 function AdventureContent() {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const worldMapId = searchParams.get('id')
   
   const [worldMap, setWorldMap] = useState<WorldMapType | null>(null)
@@ -29,46 +29,36 @@ function AdventureContent() {
     setProgress(loadProgress())
   }, [worldMapId])
 
+  const handleBackToDashboard = useCallback(() => {
+    router.push('/')
+  }, [router])
+
   const handleConceptComplete = useCallback((conceptId: string, xpAwarded: number) => {
     if (!worldMap) return
 
-    // Update world map with completed concept
     const updatedConcepts = worldMap.concepts.map(c =>
-      c.id === conceptId ? { ...c, completed: true } : c
+      c.id === conceptId ? { ...c, completed: true, progress: 100 } : c
     )
     const updatedWorldMap = { ...worldMap, concepts: updatedConcepts }
     setWorldMap(updatedWorldMap)
     saveWorldMap(updatedWorldMap)
 
-    // Update XP and progress
     const newProgress = addXpAndUpdateProgress(xpAwarded, conceptId)
     setProgress(newProgress)
-
-    // Close modal
     setSelectedConcept(null)
   }, [worldMap])
 
-  if (!mounted) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-pulse text-[var(--gold-dim)] font-serif">Loading adventure...</div>
-      </div>
-    )
-  }
+  if (!mounted) return null
 
   if (!worldMap) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center gap-6 p-4">
-        <div className="h-20 w-20 rounded-full bg-[var(--muted)] border-2 border-[var(--gold-dim)]/30 flex items-center justify-center">
-          <Map className="h-10 w-10 text-[var(--muted-foreground)]" />
+      <div className="min-h-screen flex flex-col items-center justify-center gap-6 p-6 text-center">
+        <div className="h-20 w-20 rounded-full bg-black/20 border-2 border-[var(--gold-dim)] flex items-center justify-center shadow-xl">
+          <Scroll className="h-10 w-10 text-[var(--gold-dim)]" />
         </div>
-        <h1 className="text-2xl font-serif font-semibold text-[var(--gold)]">Adventure Not Found</h1>
-        <p className="text-[var(--parchment-dark)] text-center max-w-md">
-          This ancient map has been lost to time or never existed in the first place.
-        </p>
+        <h1 className="text-3xl font-serif font-black text-[var(--gold)] uppercase tracking-tighter">Adventure Not Found</h1>
         <Link href="/">
-          <Button variant="outline" className="gap-2 border-[var(--gold-dim)] text-[var(--gold)] hover:bg-[var(--gold)]/10">
-            <ArrowLeft className="h-4 w-4" />
+          <Button className="bg-[var(--gold)] text-black font-black uppercase gold-glow h-12 px-8">
             Return to Sanctuary
           </Button>
         </Link>
@@ -76,88 +66,32 @@ function AdventureContent() {
     )
   }
 
-  const completedCount = worldMap.concepts.filter(c => c.completed).length
-  const totalCount = worldMap.concepts.length
-  const allCompleted = completedCount === totalCount
+  const allCompleted = worldMap.concepts.every(c => c.completed)
 
   return (
-    <main className="min-h-screen">
-      {/* Header */}
-      <header className="sticky top-0 z-40 bg-[var(--background)]/95 backdrop-blur-md border-b border-[var(--gold-dim)]/20">
-        <div className="max-w-6xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between gap-4 mb-4">
-            <div className="flex items-center gap-4">
-              <Link href="/">
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-10 w-10 text-[var(--gold-dim)] hover:text-[var(--gold)] hover:bg-[var(--gold)]/10"
-                >
-                  <ArrowLeft className="h-5 w-5" />
-                </Button>
-              </Link>
-              <div className="flex items-center gap-3">
-                <div className="h-12 w-12 rounded-lg bg-[var(--gold)]/10 border border-[var(--gold-dim)]/50 flex items-center justify-center">
-                  <Scroll className="h-6 w-6 text-[var(--gold)]" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2 text-sm text-[var(--parchment-dark)]">
-                    {allCompleted ? (
-                      <>
-                        <CheckCircle2 className="h-4 w-4 text-[var(--success)]" />
-                        <span className="text-[var(--success)]">Quest Complete!</span>
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="h-4 w-4 text-[var(--gold-dim)]" />
-                        <span>{completedCount}/{totalCount} challenges conquered</span>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <XpBar progress={progress} compact />
-        </div>
-      </header>
-
-      {/* Progress indicator */}
-      <div className="h-1 bg-[var(--muted)]">
-        <div 
-          className="h-full bg-gradient-to-r from-[var(--gold-dim)] via-[var(--gold)] to-[var(--gold-dim)] transition-all duration-500"
-          style={{ width: `${(completedCount / totalCount) * 100}%` }}
-        />
-      </div>
-
-      {/* World Map */}
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        {allCompleted && (
-          <div className="mb-8 p-6 rounded-xl parchment-texture animate-border-glow text-center">
-            <Sparkles className="h-12 w-12 text-[var(--gold)] mx-auto mb-4" />
-            <h2 className="font-serif text-2xl font-bold text-[var(--gold)] mb-2">
-              Quest Complete!
-            </h2>
-            <p className="text-[var(--parchment-dark)] mb-4">
-              You have conquered all challenges and proven your mastery of this realm.
-            </p>
+    <main className="min-h-screen bg-[var(--background)]">
+      <div className="max-w-6xl mx-auto px-6 py-12">
+        {allCompleted && worldMap.concepts.length > 0 && (
+          <div className="mb-12 p-8 rounded-2xl parchment-texture border-2 border-[var(--success)]/40 shadow-[0_0_30px_rgba(34,197,94,0.15)] text-center animate-border-glow">
+            <CheckCircle2 className="h-16 w-16 text-[var(--success)] mx-auto mb-4" />
+            <h2 className="font-serif text-3xl font-black text-[var(--gold)] uppercase mb-2">Mastery Achieved</h2>
             <Link href="/">
-              <Button className="bg-[var(--gold)] hover:bg-[var(--gold-dim)] text-black font-semibold gold-glow">
-                <Sparkles className="h-4 w-4 mr-2" />
-                Begin New Adventure
+              <Button className="bg-[var(--gold)] hover:bg-[var(--gold-dim)] text-black font-black uppercase gold-glow h-14 px-10 text-lg">
+                Seek New Knowledge
               </Button>
             </Link>
           </div>
         )}
+
         <WorldMap
           title={worldMap.title}
           concepts={worldMap.concepts}
           onSelectConcept={setSelectedConcept}
+          onBack={handleBackToDashboard}
         />
       </div>
 
-      {/* Challenge Modal */}
-      {selectedConcept && worldMap && (
+      {selectedConcept && (
         <ChallengeModal
           concept={selectedConcept}
           worldMap={worldMap}
@@ -171,11 +105,7 @@ function AdventureContent() {
 
 export default function AdventurePage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-pulse text-[var(--gold-dim)] font-serif">Loading adventure...</div>
-      </div>
-    }>
+    <Suspense fallback={<div className="min-h-screen bg-black" />}>
       <AdventureContent />
     </Suspense>
   )

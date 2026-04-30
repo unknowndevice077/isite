@@ -1,7 +1,15 @@
 'use client'
 
 import { Card, CardContent } from '@/components/ui/card'
-import { CheckCircle2, MapPin, Star, Swords, Lock } from 'lucide-react'
+import { Progress } from '@/components/ui/progress'
+import { 
+  CheckCircle2, 
+  MapPin, 
+  Star, 
+  Swords, 
+  Lock, 
+  XCircle 
+} from 'lucide-react'
 import type { Concept } from '@/lib/types'
 import { cn } from '@/lib/utils'
 
@@ -27,10 +35,13 @@ const difficultyConfig = {
 }
 
 export function ConceptCard({ concept, onClick, index }: ConceptCardProps) {
-  // Fix: Added a fallback to 'medium' to prevent the "Cannot read properties of undefined (reading 'stars')" crash
   const config = difficultyConfig[concept.difficulty as keyof typeof difficultyConfig] || difficultyConfig.medium
   const isCompleted = concept.completed
   const isLocked = concept.locked
+  // Assumes your concept data tracks a failed state
+  const isFailed = (concept as any).failed || false 
+  
+  const progressPercent = isCompleted ? 100 : 0;
 
   const handleClick = () => {
     if (!isLocked) {
@@ -44,167 +55,146 @@ export function ConceptCard({ concept, onClick, index }: ConceptCardProps) {
         'group relative cursor-pointer transition-all duration-300 overflow-hidden',
         'border-2 hover:scale-[1.02]',
         isLocked
-          ? 'bg-[var(--muted-background)]/50 border-[var(--muted-foreground)]/30 hover:scale-100 cursor-not-allowed opacity-60'
+          ? 'bg-zinc-900/50 border-zinc-800 hover:scale-100 cursor-not-allowed opacity-60'
           : isCompleted 
-            ? 'bg-[var(--success)]/5 border-[var(--success)]/40 hover:border-[var(--success)]/60' 
-            : 'stone-texture hover:border-[var(--gold)]'
+            ? 'bg-green-950/40 border-green-500/50 hover:border-green-400' 
+            : isFailed
+              ? 'bg-red-950/40 border-red-500/50 hover:border-red-400'
+              : 'bg-black border-[var(--gold-dim)]/40 hover:border-[var(--gold)]'
       )}
       onClick={handleClick}
     >
-      {/* Glow effect on hover */}
+      {/* Background Glow */}
       {!isLocked && (
         <div className={cn(
           'absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none',
           isCompleted 
-            ? 'bg-gradient-to-br from-[var(--success)]/10 to-transparent'
-            : 'bg-gradient-to-br from-[var(--gold)]/10 to-transparent'
+            ? 'bg-gradient-to-br from-green-500/10 to-transparent'
+            : isFailed
+              ? 'bg-gradient-to-br from-red-500/10 to-transparent'
+              : 'bg-gradient-to-br from-[var(--gold)]/10 to-transparent'
         )} />
       )}
       
-      {/* Completion indicator */}
-      {isCompleted && (
-        <div className="absolute top-3 right-3 z-10">
-          <div className="flex items-center justify-center h-9 w-9 rounded-full bg-[var(--success)]/20 border-2 border-[var(--success)]/60 gold-glow">
-            <CheckCircle2 className="h-5 w-5 text-[var(--success)]" />
+      {/* Indicators */}
+      <div className="absolute top-3 right-3 z-10">
+        {isCompleted && (
+          <div className="flex items-center justify-center h-9 w-9 rounded-full bg-green-500/20 border-2 border-green-500/60 shadow-[0_0_15px_rgba(34,197,94,0.4)]">
+            <CheckCircle2 className="h-5 w-5 text-green-400" />
           </div>
-        </div>
-      )}
-
-      {/* Lock indicator */}
-      {isLocked && (
-        <div className="absolute top-3 right-3 z-10">
-          <div className="flex items-center justify-center h-9 w-9 rounded-full bg-[var(--muted-foreground)]/20 border-2 border-[var(--muted-foreground)]/60">
-            <Lock className="h-5 w-5 text-[var(--muted-foreground)]" />
+        )}
+        {isFailed && (
+          <div className="flex items-center justify-center h-9 w-9 rounded-full bg-red-500/20 border-2 border-red-500/60 shadow-[0_0_15px_rgba(239,68,68,0.4)]">
+            <XCircle className="h-5 w-5 text-red-400" />
           </div>
-        </div>
-      )}
+        )}
+        {isLocked && (
+          <div className="flex items-center justify-center h-9 w-9 rounded-full bg-zinc-800/50 border-2 border-zinc-700">
+            <Lock className="h-5 w-5 text-zinc-500" />
+          </div>
+        )}
+      </div>
 
       <CardContent className="p-5">
-        {/* Location header */}
         <div className="flex items-start gap-3 mb-4">
           <div className={cn(
             'flex items-center justify-center h-10 w-10 rounded-lg flex-shrink-0',
             isLocked
-              ? 'bg-[var(--muted-foreground)]/10 border border-[var(--muted-foreground)]/30'
+              ? 'bg-zinc-800 border border-zinc-700'
               : isCompleted 
-                ? 'bg-[var(--success)]/20 border border-[var(--success)]/40' 
-                : 'bg-[var(--gold)]/10 border border-[var(--gold-dim)]/50'
+                ? 'bg-green-500/20 border border-green-500/40' 
+                : isFailed
+                  ? 'bg-red-500/20 border border-red-500/40'
+                  : 'bg-[var(--gold)]/10 border border-[var(--gold-dim)]/50'
           )}>
             <MapPin className={cn(
               'h-5 w-5',
-              isLocked
-                ? 'text-[var(--muted-foreground)]'
-                : isCompleted ? 'text-[var(--success)]' : 'text-[var(--gold)]'
+              isLocked ? 'text-zinc-600' : isCompleted ? 'text-green-400' : isFailed ? 'text-red-400' : 'text-[var(--gold)]'
             )} />
           </div>
           <div className="flex-1 min-w-0">
             <p className={cn(
-              'text-xs uppercase tracking-wider mb-0.5 font-sans',
-              isLocked 
-                ? 'text-[var(--muted-foreground)]'
-                : 'text-[var(--gold-dim)]'
+              'text-xs uppercase tracking-wider mb-0.5 font-sans font-bold',
+              isLocked ? 'text-zinc-600' : isCompleted ? 'text-green-500/70' : isFailed ? 'text-red-500/70' : 'text-[var(--gold-dim)]'
             )}>
               Region {index + 1}
             </p>
             <h3 className={cn(
-              'font-serif text-lg font-semibold leading-tight',
-              isLocked
-                ? 'text-[var(--muted-foreground)]'
-                : isCompleted ? 'text-[var(--success)]' : 'text-[var(--gold)]'
+              'font-serif text-lg font-black leading-tight',
+              isLocked ? 'text-zinc-700' : isCompleted ? 'text-green-400' : isFailed ? 'text-red-400' : 'text-[var(--gold)]'
             )}>
               {concept.location}
             </h3>
           </div>
         </div>
 
-        {/* Concept name */}
         <h4 className={cn(
-          'font-semibold mb-2 line-clamp-2',
-          isLocked ? 'text-[var(--muted-foreground)]' : 'text-[var(--parchment)]'
+          'font-bold mb-2 line-clamp-2',
+          isLocked ? 'text-zinc-600' : 'text-zinc-100'
         )}>
           {concept.name}
         </h4>
 
-        {/* Description preview */}
         <p className={cn(
           'text-sm line-clamp-2 mb-4 leading-relaxed',
-          isLocked 
-            ? 'text-[var(--muted-foreground)]'
-            : 'text-[var(--parchment-dark)]'
+          isLocked ? 'text-zinc-700' : 'text-zinc-400 font-serif italic'
         )}>
           {concept.description}
         </p>
 
-        {/* Footer */}
+        {/* Mastery Progress Bar */}
+        <div className="mt-auto space-y-2.5 mb-4">
+          <div className={cn(
+            "flex justify-between text-[10px] uppercase tracking-[0.1em] font-black",
+            isLocked ? "text-zinc-700" : isCompleted ? "text-green-500" : isFailed ? "text-red-500" : "text-[var(--gold-dim)]"
+          )}>
+            <span>Mastery Progress</span>
+            <span>{progressPercent}%</span>
+          </div>
+          <Progress 
+            value={progressPercent} 
+            className={cn(
+              "h-1.5 bg-zinc-900 shadow-inner", 
+              isCompleted ? "bg-green-500" : isFailed ? "bg-red-500" : "bg-[var(--gold)]"
+            )} 
+          />
+        </div>
+
         <div className={cn(
           'flex items-center justify-between pt-3',
-          isLocked 
-            ? 'border-t border-[var(--muted-foreground)]/20'
-            : 'border-t border-[var(--gold-dim)]/20'
+          isLocked ? 'border-t border-zinc-800/50' : 'border-t border-zinc-800'
         )}>
           <div className="flex items-center gap-1">
             {Array.from({ length: 3 }).map((_, i) => (
               <Star 
                 key={i} 
                 className={cn(
-                  'h-4 w-4 transition-colors',
+                  'h-3.5 w-3.5 transition-colors',
                   isLocked
-                    ? 'text-[var(--muted-foreground)]'
+                    ? 'text-zinc-800'
                     : i < config.stars 
-                      ? 'fill-[var(--gold)] text-[var(--gold)]' 
-                      : 'text-[var(--muted-foreground)]'
+                      ? (isCompleted ? 'fill-green-500 text-green-500' : isFailed ? 'fill-red-500 text-red-500' : 'fill-[var(--gold)] text-[var(--gold)]')
+                      : 'text-zinc-800'
                 )} 
               />
             ))}
-            <span className={cn(
-              'ml-1.5 text-xs',
-              isLocked 
-                ? 'text-[var(--muted-foreground)]'
-                : 'text-[var(--parchment-dark)]'
-            )}>
+            <span className={cn('ml-1.5 text-[10px] font-black uppercase', isLocked ? 'text-zinc-700' : 'text-zinc-500')}>
               {config.label}
             </span>
           </div>
           
-          <div className="flex items-center gap-1.5 text-sm">
+          <div className="flex items-center gap-1.5 text-sm font-black font-serif">
             {isCompleted ? (
-              <span className="text-[var(--success)] font-semibold">
-                +{concept.xpReward} XP
-              </span>
+              <span className="text-green-400">+{concept.xpReward} XP</span>
+            ) : isFailed ? (
+              <span className="text-red-500">FAILED</span>
             ) : isLocked ? (
-              <span className="text-[var(--muted-foreground)] font-semibold">
-                Locked
-              </span>
+              <span className="text-zinc-700">LOCKED</span>
             ) : (
-              <>
-                <Swords className="h-4 w-4 text-[var(--gold)]" />
-                <span className="text-[var(--gold)] font-semibold">
-                  {concept.xpReward} XP
-                </span>
-              </>
+              <span className="text-[var(--gold)]">{concept.xpReward} XP</span>
             )}
           </div>
         </div>
-
-        {/* Battle prompt on hover */}
-        {!isCompleted && !isLocked && (
-          <div className="absolute inset-x-0 bottom-0 h-12 flex items-center justify-center bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-            <span className="text-sm font-semibold text-[var(--gold)] flex items-center gap-2 drop-shadow-lg">
-              <Swords className="h-4 w-4" />
-              Enter {concept.location}
-            </span>
-          </div>
-        )}
-
-        {/* Locked message on hover */}
-        {isLocked && (
-          <div className="absolute inset-x-0 bottom-0 h-12 flex items-center justify-center bg-gradient-to-t from-black/60 to-transparent">
-            <span className="text-sm font-semibold text-[var(--muted-foreground)] flex items-center gap-2 drop-shadow-lg">
-              <Lock className="h-4 w-4" />
-              Complete Region {index} first
-            </span>
-          </div>
-        )}
       </CardContent>
     </Card>
   )

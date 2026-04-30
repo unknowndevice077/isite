@@ -1,12 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Progress } from '@/components/ui/progress'
 import { loadProgress } from '@/lib/storage'
 import { getXpProgress, getLevelTitle } from '@/lib/xp'
 import { Shield, Star, Crown } from 'lucide-react'
 import type { UserProgress } from '@/lib/types'
-import { cn } from '@/lib/utils'
 
 interface XpBarProps {
   progress?: UserProgress | null
@@ -37,8 +35,10 @@ export function XpBar({ progress: externalProgress, showTitle = true, compact = 
     )
   }
 
-  const { currentLevel, currentLevelXp, nextLevelXp, progressPercent } = getXpProgress(progress.totalXp)
-  const xpIntoLevel = progress.totalXp - currentLevelXp
+  // FIX: Normalize totalXp to 0 if it's null or undefined
+  const totalXp = progress.totalXp ?? 0
+  const { currentLevel, currentLevelXp, nextLevelXp, progressPercent } = getXpProgress(totalXp)
+  const xpIntoLevel = totalXp - currentLevelXp
   const xpNeeded = nextLevelXp - currentLevelXp
 
   if (compact) {
@@ -96,7 +96,7 @@ export function XpBar({ progress: externalProgress, showTitle = true, compact = 
             <div className="flex items-center gap-1.5 mt-1">
               <Star className="h-3.5 w-3.5 text-[var(--gold)]" />
               <span className="text-xs text-[var(--gold-dim)]">
-                {progress.totalXp.toLocaleString()} Total XP
+                {totalXp.toLocaleString()} Total XP
               </span>
             </div>
           </div>

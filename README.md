@@ -1,8 +1,38 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# isite
 
-## Getting Started
+A modern Next.js web application built with TypeScript, featuring a clean component-based architecture and responsive design.
 
-First, run the development server:
+## 🚀 Overview
+
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app). It leverages the latest Next.js App Router with React 19 for building fast, scalable web applications.
+
+## 📋 Tech Stack
+
+- **Framework**: Next.js (App Router)
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS + PostCSS
+- **Linting**: ESLint
+- **Package Manager**: npm
+
+## 🛠️ Getting Started
+
+### Prerequisites
+- Node.js 18+ 
+- npm or yarn
+
+### Installation
+
+```bash
+npm install
+# or
+yarn install
+# or
+pnpm install
+# or
+bun install
+```
+
+### Development Server
 
 ```bash
 npm run dev
@@ -14,23 +44,62 @@ pnpm dev
 bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the application. The page auto-updates as you edit the files.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 📝 Project Structure
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+isite/
+├── app/                      # Next.js App Router
+├── components/               # Reusable React components
+├── hooks/                    # Custom React hooks
+├── lib/                      # Utility functions
+├── public/                   # Static assets
+├── package.json              # Dependencies and scripts
+├── tsconfig.json            # TypeScript configuration
+├── tailwind.config.ts       # Tailwind CSS configuration
+└── next.config.ts           # Next.js configuration
+```
 
-## Learn More
+## 🎨 Features
 
-To learn more about Next.js, take a look at the following resources:
+- **App Router** — Modern routing with file-based organization
+- **TypeScript** — Full type safety and better developer experience
+- **Tailwind CSS** — Utility-first CSS framework for rapid UI development
+- **Component-based Architecture** — Modular, reusable components
+- **ESLint Integration** — Code quality and consistency
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 📚 Learn More
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+To learn more about the technologies used in this project:
 
-## Deploy on Vercel
+- [Next.js Documentation](https://nextjs.org/docs) - Learn about Next.js features and API
+- [Learn Next.js](https://nextjs.org/learn) - Interactive Next.js tutorial
+- [TypeScript Documentation](https://www.typescriptlang.org/docs) - Type safety guide
+- [Tailwind CSS](https://tailwindcss.com/docs) - Styling framework documentation
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 🚢 Deployment
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com) from the creators of Next.js.
+
+### Deploy on Vercel
+
+1. Push your code to a GitHub repository
+2. Visit [vercel.com/new](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app)
+3. Import your repository
+4. Vercel will automatically detect Next.js and configure the build settings
+5. Your app will be deployed and live
+
+Check out the [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-app/deploying) for more details.
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 💬 Support
+
+For questions, issues, or feedback, please open an issue on GitHub.
+
+---
+
+**Ready to build something amazing! ⚡**

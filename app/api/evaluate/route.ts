@@ -1,11 +1,21 @@
+import { generateObject } from 'ai'
+import { z } from 'zod'
+import { questScribeModel } from '@/lib/ai'
+
+export const maxDuration = 30
+
+const evaluationSchema = z.object({
+  comprehensionLevel: z.enum(['full', 'partial', 'none']),
+  passed: z.boolean(),
+  feedback: z.string().describe('2-4 sentences of warm, specific, encouraging feedback for the student'),
+  correctPoints: z.array(z.string()).describe('Specific things the student got right'),
+  missedPoints: z.array(z.string()).describe('Specific things the student missed or got wrong'),
+})
+
 export async function POST(req: Request) {
   try {
-    const { concept, userExplanation, conversationContext } = await req.json() as {
-      concept: {
-        name: string
-        description: string
-        xpReward: number
-      }
+    const { concept, userExplanation, conversationContext } = (await req.json()) as {
+      concept: { name: string; description: string; xpReward: number }
       userExplanation: string
       conversationContext: Array<{ role: string; content: string }>
     }
@@ -14,23 +24,25 @@ export async function POST(req: Request) {
       return Response.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL_EVALUATE || 'http://localhost:5678/webhook/evaluate'
-    
-    const response = await fetch(n8nWebhookUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ concept, userExplanation, conversationContext }),
+    const contextText = (conversationContext || [])
+      .map((m) => `${m.role}: ${m.content}`)
+      .join('\n')
+
+    const { object: evaluation } = await generateObject({
+      model: questScribeModel,
+      schema: evaluationSchema,
+      prompt: `You are grading a student's understanding of a concept for a gamified learning app. Be encouraging but honest — this should feel like a supportive tutor, not a harsh exam.
+
+CONCEPT: ${concept.name}
+CONCEPT DESCRIPTION: ${concept.description}
+
+${contextText ? `PRIOR CONVERSATION:\n${contextText}\n` : ''}
+STUDENT'S EXPLANATION:
+${userExplanation}
+
+Judge how well the student understood the concept. "full" = solid understanding, "partial" = got the gist but missed key details, "none" = fundamentally misunderstood or didn't engage with the concept.`,
     })
 
-    if (!response.ok) {
-      throw new Error(`n8n webhook failed with status: ${response.status}`)
-    }
-
-    const evaluation = await response.json()
-
-    // Calculate XP based on comprehension level
     let xpAwarded = 0
     if (evaluation.comprehensionLevel === 'full') {
       xpAwarded = concept.xpReward
@@ -48,8 +60,8 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error('Evaluation error:', error)
     return Response.json(
-      { error: 'Failed to evaluate response via n8n' },
-      { status: 500 }
+      { error: 'Failed to evaluate response' },
+      { status: 500 },
     )
   }
 }

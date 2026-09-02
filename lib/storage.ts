@@ -2,6 +2,7 @@ import type { UserProgress, WorldMap } from './types'
 
 const PROGRESS_KEY = 'study-buddy-progress'
 const WORLD_MAPS_KEY = 'study-buddy-world-maps'
+const TUTORIAL_SEEN_KEY = 'study-buddy-tutorial-seen'
 
 const defaultProgress: UserProgress = {
   totalXp: 0,
@@ -89,6 +90,26 @@ export function addXpAndUpdateProgress(xpToAdd: number, conceptId: string): User
   
   saveProgress(updatedProgress)
   return updatedProgress
+}
+
+export function hasSeenTutorial(): boolean {
+  if (typeof window === 'undefined') return true
+
+  try {
+    return localStorage.getItem(TUTORIAL_SEEN_KEY) === 'true'
+  } catch {
+    return true
+  }
+}
+
+export function markTutorialSeen(): void {
+  if (typeof window === 'undefined') return
+
+  try {
+    localStorage.setItem(TUTORIAL_SEEN_KEY, 'true')
+  } catch {
+    console.error('Failed to save tutorial state')
+  }
 }
 
 export function markConceptComplete(worldMapId: string, conceptId: string): void {

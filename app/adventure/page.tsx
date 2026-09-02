@@ -6,8 +6,9 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { WorldMap } from '@/components/world-map'
 import { ChallengeModal } from '@/components/challenge-modal'
+import { TutorialModal } from '@/components/tutorial-modal'
 import { Scroll, CheckCircle2 } from 'lucide-react'
-import { getWorldMapById, loadProgress, saveWorldMap, addXpAndUpdateProgress } from '@/lib/storage'
+import { getWorldMapById, loadProgress, saveWorldMap, addXpAndUpdateProgress, hasSeenTutorial, markTutorialSeen } from '@/lib/storage'
 import type { WorldMap as WorldMapType, Concept, UserProgress } from '@/lib/types'
 
 function AdventureContent() {
@@ -19,6 +20,7 @@ function AdventureContent() {
   const [progress, setProgress] = useState<UserProgress | null>(null)
   const [selectedConcept, setSelectedConcept] = useState<Concept | null>(null)
   const [mounted, setMounted] = useState(false)
+  const [showTutorial, setShowTutorial] = useState(false)
 
   useEffect(() => {
     setMounted(true)
@@ -27,7 +29,13 @@ function AdventureContent() {
       setWorldMap(map)
     }
     setProgress(loadProgress())
+    setShowTutorial(!hasSeenTutorial())
   }, [worldMapId])
+
+  const handleDismissTutorial = useCallback(() => {
+    markTutorialSeen()
+    setShowTutorial(false)
+  }, [])
 
   const handleBackToDashboard = useCallback(() => {
     router.push('/')
@@ -99,6 +107,8 @@ function AdventureContent() {
           onComplete={handleConceptComplete}
         />
       )}
+
+      {showTutorial && <TutorialModal onDismiss={handleDismissTutorial} />}
     </main>
   )
 }

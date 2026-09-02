@@ -1,7 +1,7 @@
 'use client'
 
-import { ConceptCard } from './concept-card'
-import { Swords, Star, Trophy, Shield, Scroll, ChevronLeft } from 'lucide-react'
+import { QuestRoadmap } from './quest-roadmap'
+import { Star, Trophy, Scroll, ChevronLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { Concept } from '@/lib/types'
 import { getLevel, getLevelTitle } from '@/lib/xp'
@@ -104,16 +104,9 @@ export function WorldMap({ title, concepts, onSelectConcept, onBack }: WorldMapP
         </div>
       </div>
 
-      {/* Concept grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 pt-4">
-        {conceptsWithLocks.map((concept, index) => (
-          <ConceptCard
-            key={concept.id}
-            concept={concept}
-            index={index}
-            onClick={() => handleSelectConcept(concept)}
-          />
-        ))}
+      {/* Quest trail */}
+      <div className="pt-12 pb-4">
+        <QuestRoadmap concepts={conceptsWithLocks} onSelectConcept={handleSelectConcept} />
       </div>
     </div>
   )

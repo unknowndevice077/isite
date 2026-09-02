@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Cinzel, Geist } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
+import { BackgroundMusic } from '@/components/background-music'
 import './globals.css'
 
 const cinzel = Cinzel({ 
@@ -50,6 +51,7 @@ export default function RootLayout({
     <html lang="en" className={`${cinzel.variable} ${geist.variable} bg-background`}>
       <body className="font-sans antialiased min-h-screen">
         {children}
+        <BackgroundMusic />
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>

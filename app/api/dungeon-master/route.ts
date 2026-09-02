@@ -1,67 +1,81 @@
-import { UIMessage } from 'ai'
+import { UIMessage, generateObject } from 'ai'
+import { z } from 'zod'
+import { questScribeModel } from '@/lib/ai'
 
-export const maxDuration = 60; // Gives Ollama/n8n time to think on your 1660 SUPER
+export const maxDuration = 60
+
+const dmSchema = z.object({
+  narrative: z.string().describe("The Sage's in-character response, 2-5 sentences, warm and encouraging fantasy-narrator tone"),
+  isCorrect: z.boolean().nullable().describe('Whether the last student message showed correct understanding, or null if not applicable (e.g. a greeting)'),
+  xpReward: z.number().int().min(0).max(200).describe('XP to award if isCorrect is true, otherwise 0'),
+  hpPenalty: z.number().int().min(0).max(50).describe('HP to deduct if isCorrect is false, otherwise 0'),
+})
+
+interface QuestConcept {
+  name?: string
+  location?: string
+  description?: string
+}
+
+/** Handles both string-content and parts-array message shapes. */
+function extractText(message: UIMessage): string {
+  const content = (message as { content?: unknown }).content
+  if (typeof content === 'string') return content
+  if (Array.isArray(message.parts)) {
+    return message.parts
+      .filter((p): p is { type: 'text'; text: string } => p.type === 'text')
+      .map((p) => p.text)
+      .join('')
+  }
+  return ''
+}
 
 export async function POST(req: Request) {
   try {
-    const { messages, concept, video_url, user_id } = await req.json() as {
+    const { messages, concept, video_url } = (await req.json()) as {
       messages: UIMessage[]
-      concept: any
+      concept: QuestConcept | undefined
       video_url: string
       user_id: string
     }
 
-    const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL_DUNGEON_MASTER
-    if (!n8nWebhookUrl) throw new Error('N8N_WEBHOOK_URL_DUNGEON_MASTER is not defined')
+    const lastUserMessage = messages.filter((m) => m.role === 'user').pop()
+    const user_message = lastUserMessage ? extractText(lastUserMessage) : ''
 
-    const lastUserMessage = messages.filter(m => m.role === 'user').pop() as any
-    let user_message = ''
-    
-    if (lastUserMessage) {
-      if (typeof lastUserMessage.content === 'string') {
-        user_message = lastUserMessage.content
-      } else if (Array.isArray(lastUserMessage.parts)) {
-        user_message = lastUserMessage.parts
-          .filter((p: any) => p.type === 'text')
-          .map((p: any) => p.text)
-          .join('')
-      }
-    }
+    const location = concept?.location || 'The Unknown'
+    const targetConcept = concept?.name || 'General Knowledge'
+    const targetDescription = concept?.description || ''
 
-    const requestPayload = { 
-      location: concept?.location || "The Unknown",
-      target_concept: concept?.name || "General Knowledge",
-      target_description: concept?.description || "",
-      video_url: video_url || concept?.sourceText || "", 
-      user_message, 
-      user_id: user_id || 'rj-guest-session' 
-    }
+    const historyText = messages
+      .slice(-8)
+      .map((m) => `${m.role}: ${extractText(m)}`)
+      .join('\n')
 
-    console.log('Calling n8n webhook:', n8nWebhookUrl)
-    console.log('Request payload:', JSON.stringify(requestPayload, null, 2))
+    const { object } = await generateObject({
+      model: questScribeModel,
+      schema: dmSchema,
+      prompt: `You are "The Sage", an in-world narrator and tutor for QuestScribe, a fantasy-themed learning game. Stay in character: warm, a little theatrical, but never condescending. You are guiding a student through a location called "${location}" where the lesson is about: ${targetConcept}.
 
-    const response = await fetch(n8nWebhookUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(requestPayload),
+CONCEPT TO TEACH: ${targetConcept}
+CONCEPT DETAILS: ${targetDescription}
+${video_url ? `SOURCE MATERIAL: ${video_url}` : ''}
+
+CONVERSATION SO FAR:
+${historyText || '(this is the start of the conversation)'}
+
+STUDENT'S LATEST MESSAGE: ${user_message || '(the student just arrived)'}
+
+Respond in character as The Sage. If the student is demonstrating or explaining the concept, judge whether they understood it correctly and set isCorrect/xpReward/hpPenalty accordingly. If they're just greeting you or asking a question, set isCorrect to null and xpReward/hpPenalty to 0.`,
     })
 
-    if (!response.ok) {
-      const responseText = await response.text()
-      console.error(`n8n failed with status: ${response.status}`)
-      console.error('Response body:', responseText)
-      throw new Error(`n8n failed with status: ${response.status} - ${responseText}`)
+    let text = object.narrative || 'The Sage is silent...'
+
+    if (object.isCorrect === true && object.xpReward > 0) {
+      text = `[XP_AWARDED:${object.xpReward}]\n${text}`
     }
 
-    const data = await response.json()
-    let text = data.dm_narrative || data.output || data.response || "The Sage is silent...";
-
-    if (data.is_correct === true || data.xp_reward > 0) {
-      text = `[XP_AWARDED:${data.xp_reward || 100}]\n${text}`;
-    }
-
-    if (data.is_correct === false && data.hp_penalty > 0) {
-      text = `[HP_LOSS:${data.hp_penalty}]\n${text}`;
+    if (object.isCorrect === false && object.hpPenalty > 0) {
+      text = `[HP_LOSS:${object.hpPenalty}]\n${text}`
     }
 
     const encoder = new TextEncoder()
@@ -69,14 +83,14 @@ export async function POST(req: Request) {
       start(controller) {
         controller.enqueue(encoder.encode(`0:${JSON.stringify(text)}\n`))
         controller.close()
-      }
+      },
     })
 
     return new Response(stream, {
       headers: {
         'Content-Type': 'text/plain; charset=utf-8',
-        'x-vercel-ai-data-stream': 'v1'
-      }
+        'x-vercel-ai-data-stream': 'v1',
+      },
     })
   } catch (error) {
     console.error('Dungeon Master error:', error)

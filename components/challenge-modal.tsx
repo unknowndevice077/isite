@@ -5,12 +5,13 @@ import { useChat } from '@ai-sdk/react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Spinner } from '@/components/ui/spinner'
-import { 
-  X, Send, Star, Scroll, User, Swords, Heart, 
-  Sparkles, FlaskConical, ShieldCheck, Shield, MessageSquare
+import {
+  X, Send, Star, Swords, Heart,
+  Sparkles, FlaskConical, ShieldCheck, MessageSquare
 } from 'lucide-react'
 import type { Concept, WorldMap, EvaluationResult } from '@/lib/types'
 import { cn } from '@/lib/utils'
+import { ScholarSprite, SageSprite } from '@/components/sprites'
 
 function getMessageText(parts: Array<{ type: string; text?: string }> | undefined): string {
   if (!parts || !Array.isArray(parts)) return ''
@@ -21,19 +22,37 @@ function getMessageText(parts: Array<{ type: string; text?: string }> | undefine
 }
 
 export function ChallengeModal({ concept, worldMap, onClose, onComplete }: any) {
-  // --- GUARD CLAUSE ---
-  if (!concept || !worldMap) return null;
-
   // --- STATE ---
   const [input, setInput] = useState('')
   const [isEvaluating, setIsEvaluating] = useState(false)
   const [evaluationResult, setEvaluationResult] = useState<EvaluationResult | null>(null)
   const [hintsUsed, setHintsUsed] = useState(0)
   const [health, setHealth] = useState(100)
-  const [accumulatedXp, setAccumulatedXp] = useState(0) 
+  const [accumulatedXp, setAccumulatedXp] = useState(0)
   const [showXpFloat, setShowXpFloat] = useState(false)
   const [floatXp, setFloatXp] = useState(0)
-  
+
+  // --- ATTACK / HEAL FX ---
+  const [isShaking, setIsShaking] = useState(false)
+  const [flashKind, setFlashKind] = useState<'damage' | 'heal' | null>(null)
+  const [hpFloat, setHpFloat] = useState<{ amount: number; kind: 'damage' | 'heal' } | null>(null)
+
+  const triggerDamage = (amount: number) => {
+    setIsShaking(true)
+    setFlashKind('damage')
+    setHpFloat({ amount, kind: 'damage' })
+    setTimeout(() => setIsShaking(false), 500)
+    setTimeout(() => setFlashKind(null), 400)
+    setTimeout(() => setHpFloat(null), 1300)
+  }
+
+  const triggerHeal = (amount: number) => {
+    setFlashKind('heal')
+    setHpFloat({ amount, kind: 'heal' })
+    setTimeout(() => setFlashKind(null), 400)
+    setTimeout(() => setHpFloat(null), 1300)
+  }
+
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   
@@ -112,6 +131,7 @@ export function ChallengeModal({ concept, worldMap, onClose, onComplete }: any) 
       if (hpMatch) {
         const penalty = parseInt(hpMatch[1], 10);
         setHealth(prev => Math.max(0, prev - penalty));
+        triggerDamage(penalty);
       }
     }
   }, [messages, isStreaming]);
@@ -137,19 +157,24 @@ export function ChallengeModal({ concept, worldMap, onClose, onComplete }: any) 
   const handleShield = () => {
     if (shieldsUsed >= maxShields || health >= 100 || evaluationResult) return
     setShieldsUsed(prev => prev + 1)
+    const healed = Math.min(30, 100 - health)
     setHealth(prev => Math.min(100, prev + 30))
+    triggerHeal(healed)
   }
 
   const handleComplete = () => { 
     if (evaluationResult) onComplete(concept.id, accumulatedXp) 
   }
 
-  const handleKeyDown = (e: React.KeyboardEvent) => { 
-    if (e.key === 'Enter' && !e.shiftKey) { 
-      e.preventDefault(); 
-      handleSend(); 
-    } 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
   }
+
+  // --- GUARD CLAUSE --- (after all hooks, so hook order stays stable across renders)
+  if (!concept || !worldMap) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm">
@@ -161,13 +186,36 @@ export function ChallengeModal({ concept, worldMap, onClose, onComplete }: any) 
         </div>
       )}
 
-      <div className="w-full max-w-4xl max-h-[95vh] flex gap-4">
-        <div className="flex-1 flex flex-col parchment-texture rounded-lg overflow-hidden animate-border-glow">
+      {hpFloat && (
+        <div className="fixed top-1/2 left-1/2 -translate-x-1/2 z-[60] pointer-events-none">
+          <span
+            className={cn(
+              "animate-hp-float text-4xl font-serif font-bold drop-shadow-[0_0_20px_rgba(0,0,0,0.8)]",
+              hpFloat.kind === 'damage' ? "text-[var(--health)]" : "text-green-400"
+            )}
+          >
+            {hpFloat.kind === 'damage' ? '-' : '+'}{hpFloat.amount} HP
+          </span>
+        </div>
+      )}
+
+      <div className={cn("w-full max-w-4xl max-h-[95vh] flex gap-4", isShaking && "animate-screen-shake")}>
+        <div className="flex-1 flex flex-col parchment-texture rounded-lg overflow-hidden animate-border-glow relative">
+          {/* Damage/heal flash overlay */}
+          {flashKind && (
+            <div
+              className={cn(
+                "absolute inset-0 z-40 pointer-events-none animate-damage-flash",
+                flashKind === 'damage' ? "bg-red-600/40" : "bg-green-500/30"
+              )}
+            />
+          )}
+
           {/* Progress Bar (Cumulative XP) */}
           <div className="h-2 bg-[var(--muted)] relative overflow-hidden">
-             <div 
-               className="h-full bg-[var(--gold)] transition-all duration-1000 ease-out" 
-               style={{ width: `${Math.min(100, accumulatedXp)}%` }} 
+             <div
+               className="h-full bg-[var(--gold)] transition-all duration-1000 ease-out"
+               style={{ width: `${Math.min(100, accumulatedXp)}%` }}
              />
           </div>
 
@@ -192,8 +240,10 @@ export function ChallengeModal({ concept, worldMap, onClose, onComplete }: any) 
           <div className="px-4 py-2 bg-black/20">
             <div className="flex items-center gap-3">
               <Heart className={cn("h-4 w-4 text-[var(--health)]", health <= 30 && "animate-health-pulse")} />
-              <div className="flex-1 h-3 bg-[var(--muted)] rounded-full overflow-hidden">
-                <div className="h-full health-bar transition-all duration-500" style={{ width: `${health}%` }} />
+              <div className="flex-1 h-3 bg-[var(--muted)] rounded-full overflow-hidden relative">
+                {/* Ghost bar drains slowly behind the main bar for a "chip damage" effect */}
+                <div className="absolute inset-y-0 left-0 health-bar-ghost" style={{ width: `${health}%` }} />
+                <div className="absolute inset-y-0 left-0 health-bar transition-all duration-200" style={{ width: `${health}%` }} />
               </div>
               <span className="text-xs font-mono text-[var(--parchment-dark)]">{health}/100</span>
             </div>
@@ -233,8 +283,8 @@ export function ChallengeModal({ concept, worldMap, onClose, onComplete }: any) 
                       {isUser ? 'Scholar' : 'Dungeon Master'}
                     </span>
                     <div className={cn('flex gap-3 max-w-[85%]', isUser ? 'flex-row-reverse' : 'flex-row')}>
-                      <div className={cn('flex items-center justify-center h-9 w-9 rounded-lg shrink-0 mt-1', isUser ? 'stone-texture' : 'bg-[var(--gold)]/10 border border-[var(--gold-dim)]/50')}>
-                        {isUser ? <User className="h-4 w-4 text-[var(--gold)]" /> : <Scroll className="h-4 w-4 text-[var(--gold)]" />}
+                      <div className={cn('flex items-center justify-center h-9 w-9 rounded-lg shrink-0 mt-1 p-1', isUser ? 'stone-texture' : 'bg-[var(--gold)]/10 border border-[var(--gold-dim)]/50')}>
+                        {isUser ? <ScholarSprite className="h-full w-full" /> : <SageSprite className="h-full w-full" />}
                       </div>
                       <div className={cn('rounded-2xl px-4 py-3 shadow-md', isUser ? 'stone-texture text-[var(--parchment)] rounded-tr-none' : 'bg-[var(--parchment-bg)] border border-[var(--gold-dim)]/30 text-[var(--parchment)] rounded-tl-none')}>
                         <p className={cn("text-sm whitespace-pre-wrap leading-relaxed", !isUser && "font-serif italic")}>{text}</p>
@@ -244,15 +294,15 @@ export function ChallengeModal({ concept, worldMap, onClose, onComplete }: any) 
                 )
               })}
 
-            {/* TYPING INDICATOR (Bouncing Scroll and Dots) */}
-            {status === 'submitting' && (
+            {/* TYPING INDICATOR (Bouncing Sage sprite and dots) */}
+            {status === 'submitted' && (
               <div className="flex flex-col items-start animate-in fade-in duration-300">
                 <span className="text-[10px] uppercase tracking-widest text-[var(--gold-dim)] mb-1 px-1">
                   Dungeon Master
                 </span>
                 <div className="flex gap-3 max-w-[85%] flex-row">
-                  <div className="flex items-center justify-center h-9 w-9 rounded-lg shrink-0 mt-1 bg-[var(--gold)]/10 border border-[var(--gold-dim)]/50">
-                    <Scroll className="h-4 w-4 text-[var(--gold)] animate-bounce" />
+                  <div className="flex items-center justify-center h-9 w-9 rounded-lg shrink-0 mt-1 p-1 bg-[var(--gold)]/10 border border-[var(--gold-dim)]/50">
+                    <SageSprite className="h-full w-full animate-bounce" />
                   </div>
                   <div className="rounded-2xl px-5 py-3 shadow-md bg-[var(--parchment-bg)] border border-[var(--gold-dim)]/30 text-[var(--parchment)] rounded-tl-none flex items-center min-h-[44px]">
                     <div className="flex gap-1">
@@ -268,6 +318,11 @@ export function ChallengeModal({ concept, worldMap, onClose, onComplete }: any) 
           </div>
 
           <div className="p-4 border-t border-[var(--gold-dim)]/30 bg-black/20">
+            {error && (
+              <div className="mb-3 p-3 rounded-lg bg-[var(--health)]/10 border border-[var(--health)]/30 text-[var(--health)] text-sm">
+                The Sage is resting (the AI is overloaded or its free quota ran out). Please wait a moment and try again.
+              </div>
+            )}
             {evaluationResult ? (
               <Button className="w-full h-14 text-lg font-serif font-semibold gap-3 bg-[var(--gold)] hover:bg-[var(--gold-dim)] text-black gold-glow" onClick={handleComplete}>
                 <Sparkles className="h-5 w-5" /> Ascend with {accumulatedXp} XP
@@ -302,8 +357,8 @@ export function ChallengeModal({ concept, worldMap, onClose, onComplete }: any) 
         {/* Inventory Sidebar */}
         <div className="w-48 flex-shrink-0 hidden lg:flex flex-col gap-4">
           <div className="parchment-texture rounded-lg p-4 text-center animate-border-glow">
-            <div className="w-16 h-16 mx-auto rounded-full bg-[var(--gold)]/20 border-2 border-[var(--gold-dim)] flex items-center justify-center mb-2"> 
-              <Shield className="h-8 w-8 text-[var(--gold)]" /> 
+            <div className="w-16 h-16 mx-auto rounded-full bg-[var(--gold)]/20 border-2 border-[var(--gold-dim)] flex items-center justify-center mb-2 p-3">
+              <ScholarSprite className="h-full w-full" />
             </div>
             <p className="text-xs text-[var(--gold-dim)] uppercase tracking-wider">Scholar</p>
             <p className="font-serif text-[var(--gold)] text-sm">Trial Progress</p>

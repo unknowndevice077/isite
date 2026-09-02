@@ -44,11 +44,11 @@ export function InputForm() {
         }),
       })
 
-      if (!response.ok) {
-        throw new Error('Failed to generate world map')
-      }
-
       const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to generate world map')
+      }
 
       const worldMap: WorldMap = {
         id: crypto.randomUUID(),
@@ -64,8 +64,8 @@ export function InputForm() {
 
       saveWorldMap(worldMap)
       router.push(`/adventure?id=${worldMap.id}`)
-    } catch {
-      setError('Something went wrong. Please try again.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.')
     } finally {
       setIsLoading(false)
     }

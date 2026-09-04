@@ -1,6 +1,7 @@
 'use client'
 
 import { QuestRoadmap } from './quest-roadmap'
+import { ExportMenu } from './export-menu'
 import { Star, Trophy, Scroll, ChevronLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import type { Concept } from '@/lib/types'
@@ -8,12 +9,13 @@ import { getLevel, getLevelTitle } from '@/lib/xp'
 
 interface WorldMapProps {
   title?: string
+  synopsis?: string
   concepts: Concept[]
   onSelectConcept: (concept: Concept) => void
   onBack: () => void
 }
 
-export function WorldMap({ title, concepts, onSelectConcept, onBack }: WorldMapProps) {
+export function WorldMap({ title, synopsis, concepts, onSelectConcept, onBack }: WorldMapProps) {
   // --- LOGIC ---
   const conceptsWithLocks = concepts.map((concept, index) => ({
     ...concept,
@@ -86,14 +88,17 @@ export function WorldMap({ title, concepts, onSelectConcept, onBack }: WorldMapP
 
         {/* Action Row: Back Button & Victory Status */}
         <div className="flex flex-col items-end gap-3 mt-6 md:mt-0">
-          <Button 
-            variant="outline" 
-            onClick={onBack}
-            className="border-[var(--gold-dim)]/50 text-[var(--gold)] hover:bg-[var(--gold)]/10 font-serif px-6 py-5 gap-2 uppercase font-black tracking-widest text-xs"
-          >
-            <ChevronLeft className="h-4 w-4" />
-            Back to Dashboard
-          </Button>
+          <div className="flex flex-wrap justify-end gap-3">
+            <Button
+              variant="outline"
+              onClick={onBack}
+              className="border-[var(--gold-dim)]/50 text-[var(--gold)] hover:bg-[var(--gold)]/10 font-serif px-6 py-5 gap-2 uppercase font-black tracking-widest text-xs"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Back to Dashboard
+            </Button>
+            <ExportMenu worldMap={{ title: title || 'Untitled Adventure', synopsis, concepts }} />
+          </div>
 
           {completedCount === conceptsWithLocks.length && conceptsWithLocks.length > 0 && (
             <div className="flex items-center gap-3 px-4 py-2 rounded-xl bg-[var(--success)]/10 border border-[var(--success)]/50 animate-pulse">

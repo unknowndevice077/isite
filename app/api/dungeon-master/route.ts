@@ -94,6 +94,31 @@ Respond in character as The Sage. If the student is demonstrating or explaining 
     })
   } catch (error) {
     console.error('Dungeon Master error:', error)
-    return Response.json({ error: 'The Sage is silent...' }, { status: 500 })
+
+    // AI SDK's APICallError (and the raw Google API error body inside it)
+    // both carry the quota/rate-limit signal in different shapes depending
+    // on where the failure happened, so check every place it could show up
+    // rather than betting on just one — a 429 statusCode, "RESOURCE_EXHAUSTED"
+    // (Google's own error reason string), or "quota" in the message/body.
+    const err = error as { statusCode?: number; responseBody?: string; message?: string }
+    const haystack = [err?.statusCode, err?.responseBody, err?.message, String(error)]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase()
+    const isQuotaExhausted =
+      err?.statusCode === 429 ||
+      haystack.includes('resource_exhausted') ||
+      haystack.includes('quota') ||
+      haystack.includes('rate limit')
+
+    return Response.json(
+      {
+        error: isQuotaExhausted
+          ? "quota_exhausted: the AI's free quota/credits ran out — this isn't a bug, it just needs more credits. Please try again later."
+          : 'The Sage is silent — something went wrong reaching the AI. Please try again in a moment.',
+        code: isQuotaExhausted ? 'quota_exhausted' : 'unknown',
+      },
+      { status: isQuotaExhausted ? 429 : 500 }
+    )
   }
 }

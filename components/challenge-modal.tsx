@@ -12,6 +12,7 @@ import {
 import type { Concept, WorldMap, EvaluationResult } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { ScholarSprite, SageSprite } from '@/components/sprites'
+import { playClick, playSelect, playSuccess, playFail } from '@/lib/sfx'
 
 function getMessageText(parts: Array<{ type: string; text?: string }> | undefined): string {
   if (!parts || !Array.isArray(parts)) return ''
@@ -19,6 +20,27 @@ function getMessageText(parts: Array<{ type: string; text?: string }> | undefine
     .filter((p): p is { type: 'text'; text: string } => p.type === 'text' && typeof p.text === 'string')
     .map(p => p.text)
     .join('')
+}
+
+/** Turns whatever useChat's `error` carries into a message that names the
+ * actual cause instead of a generic/raw one — specifically distinguishing
+ * "the AI ran out of quota/credits" (the dungeon-master route tags this
+ * with code: 'quota_exhausted') from a plain network/server hiccup, so the
+ * player sees a clear reason instead of a stray error or JSON dump. */
+function describeAiError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error ?? '')
+  const lower = message.toLowerCase()
+  const isQuota =
+    lower.includes('quota_exhausted') ||
+    lower.includes('resource_exhausted') ||
+    lower.includes('quota') ||
+    lower.includes('429') ||
+    lower.includes('rate limit')
+
+  if (isQuota) {
+    return "The Sage has run out of magic for today — the AI's free quota/credits are used up. This isn't a bug in the quest; it just needs more credits. Please try again later."
+  }
+  return "The Sage is silent — something went wrong reaching the AI. Please try again in a moment."
 }
 
 export function ChallengeModal({ concept, worldMap, onClose, onComplete }: any) {
@@ -124,6 +146,7 @@ export function ChallengeModal({ concept, worldMap, onClose, onComplete }: any) 
         setFloatXp(gainedXp);
         setShowXpFloat(true);
         setTimeout(() => setShowXpFloat(false), 2000);
+        playSuccess();
       }
 
       // 2. Process HP Loss Tags
@@ -132,6 +155,7 @@ export function ChallengeModal({ concept, worldMap, onClose, onComplete }: any) 
         const penalty = parseInt(hpMatch[1], 10);
         setHealth(prev => Math.max(0, prev - penalty));
         triggerDamage(penalty);
+        playFail();
       }
     }
   }, [messages, isStreaming]);
@@ -149,6 +173,7 @@ export function ChallengeModal({ concept, worldMap, onClose, onComplete }: any) 
 
   const handleHint = () => {
     if (isStreaming || isEvaluating || hintsUsed >= maxHints || evaluationResult) return
+    playSelect()
     setHintsUsed(prev => prev + 1)
     setHealth(prev => Math.max(0, prev - 10))
     handleSend('I need a hint from the spirits of this place.')
@@ -156,14 +181,18 @@ export function ChallengeModal({ concept, worldMap, onClose, onComplete }: any) 
 
   const handleShield = () => {
     if (shieldsUsed >= maxShields || health >= 100 || evaluationResult) return
+    playSelect()
     setShieldsUsed(prev => prev + 1)
     const healed = Math.min(30, 100 - health)
     setHealth(prev => Math.min(100, prev + 30))
     triggerHeal(healed)
   }
 
-  const handleComplete = () => { 
-    if (evaluationResult) onComplete(concept.id, accumulatedXp) 
+  const handleComplete = () => {
+    if (evaluationResult) {
+      playSuccess()
+      onComplete(concept.id, accumulatedXp)
+    }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -226,13 +255,16 @@ export function ChallengeModal({ concept, worldMap, onClose, onComplete }: any) 
               </div>
               <div>
                 <p className="text-xs text-[var(--gold-dim)] uppercase tracking-wider font-sans">Sacred Trial</p>
-                <h2 className="font-serif text-xl text-[var(--gold)] font-semibold">{concept?.location}</h2>
+                <h2 className="font-serif text-xl text-[var(--gold)] font-semibold">{concept?.name}</h2>
+                {concept?.location && (
+                  <p className="text-xs text-[var(--parchment-dark)] italic">{concept.location}</p>
+                )}
                 <div className="flex items-center gap-3 mt-1">
                   <span className="text-xs text-[var(--parchment-dark)] font-mono">Progress: {accumulatedXp}/100 XP</span>
                 </div>
               </div>
             </div>
-            <Button variant="ghost" size="icon" onClick={onClose} className="text-[var(--parchment-dark)] hover:text-[var(--gold)]">
+            <Button variant="ghost" size="icon" onClick={() => { playClick(); onClose() }} className="text-[var(--parchment-dark)] hover:text-[var(--gold)]">
               <X className="h-5 w-5" />
             </Button>
           </div>
@@ -261,7 +293,7 @@ export function ChallengeModal({ concept, worldMap, onClose, onComplete }: any) 
                   {starters.map((starter, idx) => (
                     <button
                       key={idx}
-                      onClick={() => handleSend(starter)}
+                      onClick={() => { playSelect(); handleSend(starter) }}
                       className="text-left px-5 py-4 rounded-2xl bg-[var(--parchment-bg)] border border-[var(--gold-dim)]/30 text-[var(--parchment)] text-sm hover:border-[var(--gold)] hover:bg-[var(--gold)]/5 transition-all duration-300 shadow-md animate-in fade-in slide-in-from-bottom-2"
                       style={{ animationDelay: `${idx * 150}ms` }}
                     >
@@ -320,7 +352,7 @@ export function ChallengeModal({ concept, worldMap, onClose, onComplete }: any) 
           <div className="p-4 border-t border-[var(--gold-dim)]/30 bg-black/20">
             {error && (
               <div className="mb-3 p-3 rounded-lg bg-[var(--health)]/10 border border-[var(--health)]/30 text-[var(--health)] text-sm">
-                The Sage is resting (the AI is overloaded or its free quota ran out). Please wait a moment and try again.
+                {describeAiError(error)}
               </div>
             )}
             {evaluationResult ? (
@@ -338,9 +370,9 @@ export function ChallengeModal({ concept, worldMap, onClose, onComplete }: any) 
                   className="min-h-[80px] resize-none bg-[var(--input)] border-[var(--gold-dim)]/30 text-[var(--parchment)]" 
                   disabled={isStreaming || health <= 0 || messages.length === 0} 
                 />
-                <Button 
-                  size="icon" 
-                  onClick={() => handleSend()} 
+                <Button
+                  size="icon"
+                  onClick={() => { playClick(); handleSend() }}
                   disabled={!input.trim() || isStreaming || health <= 0 || messages.length === 0} 
                   className="h-auto min-w-[50px] bg-[var(--gold)] text-black gold-glow"
                 >

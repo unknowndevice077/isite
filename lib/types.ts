@@ -13,6 +13,7 @@ export interface WorldMap {
   id: string
   title: string
   sourceText: string
+  synopsis?: string
   concepts: Concept[]
   createdAt: string
 }

@@ -4,6 +4,7 @@ import { CheckCircle2, Lock, Swords, XCircle, Star } from 'lucide-react'
 import type { Concept } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { ScholarSprite } from '@/components/sprites'
+import { playClick } from '@/lib/sfx'
 
 interface QuestRoadmapProps {
   concepts: Array<Concept & { locked: boolean }>
@@ -79,7 +80,11 @@ export function QuestRoadmap({ concepts, onSelectConcept }: QuestRoadmapProps) {
 
             <button
               type="button"
-              onClick={() => !isLocked && onSelectConcept(concept)}
+              onClick={() => {
+                if (isLocked) return
+                playClick()
+                onSelectConcept(concept)
+              }}
               disabled={isLocked}
               className={cn(
                 'relative flex items-center justify-center rounded-full border-4 transition-all duration-300',
@@ -132,7 +137,7 @@ export function QuestRoadmap({ concepts, onSelectConcept }: QuestRoadmapProps) {
                   isLocked ? 'text-zinc-700' : isCompleted ? 'text-green-400' : isFailed ? 'text-red-400' : 'text-[var(--gold)]',
                 )}
               >
-                {concept.location}
+                {concept.name}
               </p>
               {!isLocked && (
                 <div className="flex items-center justify-center gap-1 mt-0.5">

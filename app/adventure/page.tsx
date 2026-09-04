@@ -7,8 +7,18 @@ import { Button } from '@/components/ui/button'
 import { WorldMap } from '@/components/world-map'
 import { ChallengeModal } from '@/components/challenge-modal'
 import { TutorialModal } from '@/components/tutorial-modal'
+import { ContentOverviewModal } from '@/components/content-overview-modal'
 import { Scroll, CheckCircle2 } from 'lucide-react'
-import { getWorldMapById, loadProgress, saveWorldMap, addXpAndUpdateProgress, hasSeenTutorial, markTutorialSeen } from '@/lib/storage'
+import {
+  getWorldMapById,
+  loadProgress,
+  saveWorldMap,
+  addXpAndUpdateProgress,
+  hasSeenTutorial,
+  markTutorialSeen,
+  hasSeenOverview,
+  markOverviewSeen,
+} from '@/lib/storage'
 import type { WorldMap as WorldMapType, Concept, UserProgress } from '@/lib/types'
 
 function AdventureContent() {
@@ -21,12 +31,14 @@ function AdventureContent() {
   const [selectedConcept, setSelectedConcept] = useState<Concept | null>(null)
   const [mounted, setMounted] = useState(false)
   const [showTutorial, setShowTutorial] = useState(false)
+  const [showOverview, setShowOverview] = useState(false)
 
   useEffect(() => {
     setMounted(true)
     if (worldMapId) {
       const map = getWorldMapById(worldMapId)
       setWorldMap(map)
+      setShowOverview(!!map && !hasSeenOverview(worldMapId))
     }
     setProgress(loadProgress())
     setShowTutorial(!hasSeenTutorial())
@@ -36,6 +48,11 @@ function AdventureContent() {
     markTutorialSeen()
     setShowTutorial(false)
   }, [])
+
+  const handleDismissOverview = useCallback(() => {
+    if (worldMapId) markOverviewSeen(worldMapId)
+    setShowOverview(false)
+  }, [worldMapId])
 
   const handleBackToDashboard = useCallback(() => {
     router.push('/')
@@ -93,6 +110,7 @@ function AdventureContent() {
 
         <WorldMap
           title={worldMap.title}
+          synopsis={worldMap.synopsis}
           concepts={worldMap.concepts}
           onSelectConcept={setSelectedConcept}
           onBack={handleBackToDashboard}
@@ -108,7 +126,11 @@ function AdventureContent() {
         />
       )}
 
-      {showTutorial && <TutorialModal onDismiss={handleDismissTutorial} />}
+      {showTutorial ? (
+        <TutorialModal onDismiss={handleDismissTutorial} />
+      ) : (
+        showOverview && <ContentOverviewModal worldMap={worldMap} onDismiss={handleDismissOverview} />
+      )}
     </main>
   )
 }

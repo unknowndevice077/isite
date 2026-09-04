@@ -3,6 +3,7 @@ import type { UserProgress, WorldMap } from './types'
 const PROGRESS_KEY = 'study-buddy-progress'
 const WORLD_MAPS_KEY = 'study-buddy-world-maps'
 const TUTORIAL_SEEN_KEY = 'study-buddy-tutorial-seen'
+const OVERVIEW_SEEN_KEY = 'study-buddy-overview-seen-ids'
 
 const defaultProgress: UserProgress = {
   totalXp: 0,
@@ -109,6 +110,32 @@ export function markTutorialSeen(): void {
     localStorage.setItem(TUTORIAL_SEEN_KEY, 'true')
   } catch {
     console.error('Failed to save tutorial state')
+  }
+}
+
+export function hasSeenOverview(worldMapId: string): boolean {
+  if (typeof window === 'undefined') return true
+
+  try {
+    const stored = localStorage.getItem(OVERVIEW_SEEN_KEY)
+    const seen: string[] = stored ? JSON.parse(stored) : []
+    return seen.includes(worldMapId)
+  } catch {
+    return true
+  }
+}
+
+export function markOverviewSeen(worldMapId: string): void {
+  if (typeof window === 'undefined') return
+
+  try {
+    const stored = localStorage.getItem(OVERVIEW_SEEN_KEY)
+    const seen: string[] = stored ? JSON.parse(stored) : []
+    if (!seen.includes(worldMapId)) {
+      localStorage.setItem(OVERVIEW_SEEN_KEY, JSON.stringify([...seen, worldMapId].slice(-30)))
+    }
+  } catch {
+    console.error('Failed to save overview state')
   }
 }
 

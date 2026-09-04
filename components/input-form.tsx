@@ -1,12 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Input } from '@/components/ui/input'
 import { Spinner } from '@/components/ui/spinner'
-import { Scroll, Sparkles, Feather } from 'lucide-react'
+import { Scroll, Sparkles, Feather, FileUp } from 'lucide-react'
 import { saveWorldMap } from '@/lib/storage'
 import type { WorldMap, Concept } from '@/lib/types'
 
@@ -16,6 +16,41 @@ export function InputForm() {
   const [content, setContent] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isExtractingPdf, setIsExtractingPdf] = useState(false)
+  const [pdfFileName, setPdfFileName] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handlePdfSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = '' // allow re-selecting the same file later
+    if (!file) return
+
+    setError(null)
+    setIsExtractingPdf(true)
+    setPdfFileName(file.name)
+
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const response = await fetch('/api/extract-pdf', { method: 'POST', body: formData })
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Couldn't read that PDF. Please try again.")
+      }
+
+      setContent(data.text)
+      if (!title.trim()) {
+        setTitle(file.name.replace(/\.pdf$/i, ''))
+      }
+    } catch (err) {
+      setPdfFileName(null)
+      setError(err instanceof Error ? err.message : "Couldn't read that PDF. Please try again.")
+    } finally {
+      setIsExtractingPdf(false)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -54,6 +89,7 @@ export function InputForm() {
         id: crypto.randomUUID(),
         title: data.title || title || 'Untitled Adventure',
         sourceText: content.trim(),
+        synopsis: data.synopsis,
         concepts: data.concepts.map((c: Omit<Concept, 'id' | 'completed'>) => ({
           ...c,
           id: crypto.randomUUID(),
@@ -83,7 +119,7 @@ export function InputForm() {
             Ancient Scroll of Knowledge
           </h2>
           <p className="text-[var(--parchment-dark)] max-w-md mx-auto">
-            Inscribe your sacred texts or paste a crystal vision (YouTube link) below to transform them into an epic learning adventure
+            Inscribe your sacred texts, upload a PDF, or paste a crystal vision (YouTube link) below to transform them into an epic learning adventure
           </p>
         </div>
 
@@ -104,10 +140,32 @@ export function InputForm() {
           </div>
 
           <div className="space-y-2">
-            <label htmlFor="content" className="text-sm font-semibold text-[var(--gold-dim)] uppercase tracking-wider flex items-center gap-2">
-              <Scroll className="h-4 w-4" />
-              Sacred Text or Crystal Vision (YouTube Link)
-            </label>
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <label htmlFor="content" className="text-sm font-semibold text-[var(--gold-dim)] uppercase tracking-wider flex items-center gap-2">
+                <Scroll className="h-4 w-4" />
+                Sacred Text or Crystal Vision (YouTube Link)
+              </label>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isExtractingPdf}
+                className="text-xs font-semibold text-[var(--gold-dim)] hover:text-[var(--gold)] flex items-center gap-1.5 disabled:opacity-60 transition-colors"
+              >
+                {isExtractingPdf ? (
+                  <Spinner className="h-3.5 w-3.5" />
+                ) : (
+                  <FileUp className="h-3.5 w-3.5" />
+                )}
+                {isExtractingPdf ? 'Reading PDF…' : pdfFileName ? `${pdfFileName} ↺` : 'Or upload a PDF'}
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="application/pdf,.pdf"
+                onChange={handlePdfSelect}
+                className="hidden"
+              />
+            </div>
             <Textarea
               id="content"
               placeholder="Paste your lecture transcript, article, or a YouTube link here...
